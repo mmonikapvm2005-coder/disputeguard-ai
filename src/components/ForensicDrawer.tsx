@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { PayPalDispute, AIAnalysisResult } from '../types/dispute';
 import { EvidencePacketPrint } from './EvidencePacketPrint';
+import { DualFeedbackPortal } from './DualFeedbackPortal';
 import {
   X,
   ShieldCheck,
@@ -18,6 +19,7 @@ import {
   User,
   ArrowRight,
   Printer,
+  HeartHandshake,
 } from 'lucide-react';
 
 interface ForensicDrawerProps {
@@ -36,7 +38,7 @@ export const ForensicDrawer: React.FC<ForensicDrawerProps> = ({
   onClose,
   onEvidenceSubmitted,
 }) => {
-  const [activeTab, setActiveTab] = useState<'dossier' | 'chat'>('dossier');
+  const [activeTab, setActiveTab] = useState<'dossier' | 'chat' | 'feedback'>('dossier');
   const [analysis, setAnalysis] = useState<AIAnalysisResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -201,6 +203,17 @@ export const ForensicDrawer: React.FC<ForensicDrawerProps> = ({
             <MessageSquare className="w-3.5 h-3.5" />
             Ask Agent (Copilot Chat)
             <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+          </button>
+          <button
+            onClick={() => setActiveTab('feedback')}
+            className={`py-3 px-4 text-xs font-semibold flex items-center gap-2 border-b-2 transition ${
+              activeTab === 'feedback'
+                ? 'border-purple-400 text-purple-400'
+                : 'border-transparent text-slate-400 hover:text-slate-200'
+            }`}
+          >
+            <HeartHandshake className="w-3.5 h-3.5" />
+            Buyer & Merchant Feedback
           </button>
         </div>
 
@@ -466,6 +479,12 @@ export const ForensicDrawer: React.FC<ForensicDrawerProps> = ({
                 </button>
               </div>
             </div>
+          ) : activeTab === 'feedback' && analysis ? (
+            /* Dual Feedback Portal */
+            <DualFeedbackPortal
+              dispute={dispute}
+              analysis={analysis}
+            />
           ) : null}
         </div>
 
