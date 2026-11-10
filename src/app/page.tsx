@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { PayPalDispute } from '../types/dispute';
 import { Header } from '../components/Header';
 import { KpiOverview } from '../components/KpiOverview';
+import { RiskAnalytics } from '../components/RiskAnalytics';
 import { DisputesGrid } from '../components/DisputesGrid';
 import { ForensicDrawer } from '../components/ForensicDrawer';
 import { SimulateDisputeModal } from '../components/SimulateDisputeModal';
@@ -107,6 +108,9 @@ export default function Home() {
 
         {/* Executive KPI Overview */}
         <KpiOverview disputes={disputes} />
+
+        {/* Visual Risk Intelligence & Loss Prevention */}
+        <RiskAnalytics disputes={disputes} />
 
         {/* AG Grid Disputes Table */}
         {loading ? (
