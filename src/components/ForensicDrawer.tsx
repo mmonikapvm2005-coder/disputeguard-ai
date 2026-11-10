@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { PayPalDispute, AIAnalysisResult } from '../types/dispute';
 import {
   X,
@@ -11,10 +11,11 @@ import {
   FileText,
   Copy,
   Check,
-  Package,
-  MapPin,
-  Clock,
   Sparkles,
+  MessageSquare,
+  Bot,
+  User,
+  ArrowRight,
 } from 'lucide-react';
 
 interface ForensicDrawerProps {
@@ -23,11 +24,17 @@ interface ForensicDrawerProps {
   onEvidenceSubmitted: (disputeId: string) => void;
 }
 
+interface ChatMessage {
+  sender: 'user' | 'agent';
+  text: string;
+}
+
 export const ForensicDrawer: React.FC<ForensicDrawerProps> = ({
   dispute,
   onClose,
   onEvidenceSubmitted,
 }) => {
+  const [activeTab, setActiveTab] = useState<'dossier' | 'chat'>('dossier');
   const [analysis, setAnalysis] = useState<AIAnalysisResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -35,15 +42,23 @@ export const ForensicDrawer: React.FC<ForensicDrawerProps> = ({
   const [defenseStatement, setDefenseStatement] = useState('');
   const [submissionReceipt, setSubmissionReceipt] = useState<string | null>(null);
 
+  // Chat states
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
+  const [inputMessage, setInputMessage] = useState('');
+  const [chatLoading, setChatLoading] = useState(false);
+  const chatEndRef = useRef<HTMLDivElement>(null);
+
   useEffect(() => {
     if (!dispute) {
       setAnalysis(null);
       setSubmissionReceipt(null);
+      setChatMessages([]);
       return;
     }
 
     setLoading(true);
     setSubmissionReceipt(null);
+    setActiveTab('dossier');
 
     fetch(`/api/disputes/${dispute.dispute_id}/analyze`, { method: 'POST' })
       .then((res) => res.json())
@@ -51,10 +66,22 @@ export const ForensicDrawer: React.FC<ForensicDrawerProps> = ({
         if (data.success) {
           setAnalysis(data.analysis);
           setDefenseStatement(data.analysis.generatedDefenseStatement);
+          setChatMessages([
+            {
+              sender: 'agent',
+              text: `Hello! I have audited Dispute ${dispute.dispute_id} (${dispute.reason}). Calculated win probability is ${data.analysis.winProbability}%. Ask me anything about PayPal Seller Protection or ask me to modify the defense dossier.`,
+            },
+          ]);
         }
       })
       .finally(() => setLoading(false));
   }, [dispute]);
+
+  useEffect(() => {
+    if (activeTab === 'chat') {
+      chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [chatMessages, activeTab]);
 
   if (!dispute) return null;
 
@@ -62,6 +89,35 @@ export const ForensicDrawer: React.FC<ForensicDrawerProps> = ({
     navigator.clipboard.writeText(defenseStatement);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
+  };
+
+  const handleSendMessage = async (customText?: string) => {
+    const textToSend = customText || inputMessage;
+    if (!textToSend.trim() || chatLoading) return;
+
+    const newMsgs: ChatMessage[] = [...chatMessages, { sender: 'user', text: textToSend }];
+    setChatMessages(newMsgs);
+    if (!customText) setInputMessage('');
+    setChatLoading(true);
+
+    try {
+      const res = await fetch(`/api/disputes/${dispute.dispute_id}/chat`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: textToSend }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setChatMessages([...newMsgs, { sender: 'agent', text: data.reply }]);
+        if (data.updatedStatement) {
+          setDefenseStatement(data.updatedStatement);
+        }
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setChatLoading(false);
+    }
   };
 
   const handleSubmitToPayPal = async () => {
@@ -118,6 +174,33 @@ export const ForensicDrawer: React.FC<ForensicDrawerProps> = ({
           </button>
         </div>
 
+        {/* Tab Bar */}
+        <div className="flex border-b border-slate-800 bg-slate-950/40 px-6">
+          <button
+            onClick={() => setActiveTab('dossier')}
+            className={`py-3 px-4 text-xs font-semibold flex items-center gap-2 border-b-2 transition ${
+              activeTab === 'dossier'
+                ? 'border-sky-400 text-sky-400'
+                : 'border-transparent text-slate-400 hover:text-slate-200'
+            }`}
+          >
+            <FileText className="w-3.5 h-3.5" />
+            Evidence Dossier & Checklist
+          </button>
+          <button
+            onClick={() => setActiveTab('chat')}
+            className={`py-3 px-4 text-xs font-semibold flex items-center gap-2 border-b-2 transition ${
+              activeTab === 'chat'
+                ? 'border-sky-400 text-sky-400'
+                : 'border-transparent text-slate-400 hover:text-slate-200'
+            }`}
+          >
+            <MessageSquare className="w-3.5 h-3.5" />
+            Ask Agent (Copilot Chat)
+            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+          </button>
+        </div>
+
         {/* Content Body */}
         <div className="flex-1 overflow-y-auto custom-scrollbar p-6 space-y-6">
           {/* Dispute Quick Summary Card */}
@@ -145,7 +228,6 @@ export const ForensicDrawer: React.FC<ForensicDrawerProps> = ({
               </div>
             </div>
 
-            {/* Buyer Claim Note */}
             {dispute.buyer_notes && (
               <div className="p-3 rounded-lg bg-slate-900 border border-slate-800 text-xs text-slate-300">
                 <span className="font-semibold text-rose-400 block mb-1">
@@ -163,7 +245,7 @@ export const ForensicDrawer: React.FC<ForensicDrawerProps> = ({
                 AI Agent cross-referencing carrier scans & PayPal Seller Protection rules...
               </p>
             </div>
-          ) : analysis ? (
+          ) : activeTab === 'dossier' && analysis ? (
             <>
               {/* Score Banner */}
               <div className="p-4 rounded-xl bg-gradient-to-r from-sky-950/60 to-emerald-950/60 border border-sky-800/40 flex items-center justify-between">
@@ -260,7 +342,7 @@ export const ForensicDrawer: React.FC<ForensicDrawerProps> = ({
                 <textarea
                   value={defenseStatement}
                   onChange={(e) => setDefenseStatement(e.target.value)}
-                  rows={10}
+                  rows={9}
                   className="w-full rounded-xl bg-slate-950 border border-slate-800 p-3.5 text-xs text-slate-200 font-mono leading-relaxed focus:outline-none focus:border-sky-500 custom-scrollbar"
                 />
               </div>
@@ -280,6 +362,97 @@ export const ForensicDrawer: React.FC<ForensicDrawerProps> = ({
                 </div>
               )}
             </>
+          ) : activeTab === 'chat' ? (
+            /* Interactive Copilot Chat */
+            <div className="space-y-4">
+              {/* Quick suggestion chips */}
+              <div className="flex flex-wrap gap-2">
+                <button
+                  onClick={() => handleSendMessage('Why did you give this win probability?')}
+                  className="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-[11px] text-slate-300 border border-slate-700 transition"
+                >
+                  💡 Why is win rate this score?
+                </button>
+                <button
+                  onClick={() => handleSendMessage('Rewrite the statement in a more assertive legal tone')}
+                  className="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-[11px] text-slate-300 border border-slate-700 transition"
+                >
+                  ⚖️ Rewrite with assertive legal tone
+                </button>
+                <button
+                  onClick={() => handleSendMessage('Rewrite the statement to be more concise')}
+                  className="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-[11px] text-slate-300 border border-slate-700 transition"
+                >
+                  ✂️ Make statement concise
+                </button>
+                <button
+                  onClick={() => handleSendMessage('Explain how PayPal Seller Protection applies here')}
+                  className="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-[11px] text-slate-300 border border-slate-700 transition"
+                >
+                  📜 Explain Seller Protection policy
+                </button>
+              </div>
+
+              {/* Chat Thread */}
+              <div className="space-y-3 min-h-[280px]">
+                {chatMessages.map((msg, i) => (
+                  <div
+                    key={i}
+                    className={`flex items-start gap-2.5 ${
+                      msg.sender === 'user' ? 'justify-end' : 'justify-start'
+                    }`}
+                  >
+                    {msg.sender === 'agent' && (
+                      <div className="w-7 h-7 rounded-lg bg-sky-500/20 text-sky-400 flex items-center justify-center shrink-0 mt-0.5">
+                        <Bot className="w-4 h-4" />
+                      </div>
+                    )}
+                    <div
+                      className={`max-w-[80%] rounded-2xl px-4 py-2.5 text-xs leading-relaxed whitespace-pre-wrap ${
+                        msg.sender === 'user'
+                          ? 'bg-brand-600 text-white rounded-tr-none'
+                          : 'bg-slate-950 border border-slate-800 text-slate-200 rounded-tl-none'
+                      }`}
+                    >
+                      {msg.text}
+                    </div>
+                    {msg.sender === 'user' && (
+                      <div className="w-7 h-7 rounded-lg bg-slate-800 text-slate-300 flex items-center justify-center shrink-0 mt-0.5">
+                        <User className="w-4 h-4" />
+                      </div>
+                    )}
+                  </div>
+                ))}
+                {chatLoading && (
+                  <div className="flex items-center gap-2 text-xs text-slate-400">
+                    <div className="w-2 h-2 rounded-full bg-sky-400 animate-bounce" />
+                    <div className="w-2 h-2 rounded-full bg-sky-400 animate-bounce delay-150" />
+                    <div className="w-2 h-2 rounded-full bg-sky-400 animate-bounce delay-300" />
+                    <span>Agent is analyzing...</span>
+                  </div>
+                )}
+                <div ref={chatEndRef} />
+              </div>
+
+              {/* Chat Input */}
+              <div className="flex items-center gap-2 pt-2">
+                <input
+                  type="text"
+                  placeholder="Ask a question or request a change to the defense dossier..."
+                  value={inputMessage}
+                  onChange={(e) => setInputMessage(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()}
+                  className="flex-1 rounded-xl bg-slate-950 border border-slate-800 px-4 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-sky-500"
+                />
+                <button
+                  onClick={() => handleSendMessage()}
+                  disabled={chatLoading || !inputMessage.trim()}
+                  className="p-2 rounded-xl bg-sky-600 hover:bg-sky-500 text-white transition disabled:opacity-40"
+                >
+                  <ArrowRight className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
           ) : null}
         </div>
 
