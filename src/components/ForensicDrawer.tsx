@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { PayPalDispute, AIAnalysisResult } from '../types/dispute';
+import { EvidencePacketPrint } from './EvidencePacketPrint';
 import {
   X,
   ShieldCheck,
@@ -16,6 +17,7 @@ import {
   Bot,
   User,
   ArrowRight,
+  Printer,
 } from 'lucide-react';
 
 interface ForensicDrawerProps {
@@ -41,6 +43,7 @@ export const ForensicDrawer: React.FC<ForensicDrawerProps> = ({
   const [copied, setCopied] = useState(false);
   const [defenseStatement, setDefenseStatement] = useState('');
   const [submissionReceipt, setSubmissionReceipt] = useState<string | null>(null);
+  const [isPrintOpen, setIsPrintOpen] = useState(false);
 
   // Chat states
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
@@ -331,13 +334,23 @@ export const ForensicDrawer: React.FC<ForensicDrawerProps> = ({
                       PayPal Formal Defense Dossier (Formatted for API)
                     </h4>
                   </div>
-                  <button
-                    onClick={handleCopy}
-                    className="flex items-center gap-1 text-xs text-slate-400 hover:text-white transition"
-                  >
-                    {copied ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
-                    {copied ? 'Copied' : 'Copy Text'}
-                  </button>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => setIsPrintOpen(true)}
+                      className="flex items-center gap-1 text-xs text-sky-400 hover:text-sky-300 transition mr-2"
+                      title="Open printable official evidence dossier"
+                    >
+                      <Printer className="w-3.5 h-3.5" />
+                      Export / Print Dossier
+                    </button>
+                    <button
+                      onClick={handleCopy}
+                      className="flex items-center gap-1 text-xs text-slate-400 hover:text-white transition"
+                    >
+                      {copied ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+                      {copied ? 'Copied' : 'Copy Text'}
+                    </button>
+                  </div>
                 </div>
                 <textarea
                   value={defenseStatement}
@@ -493,6 +506,15 @@ export const ForensicDrawer: React.FC<ForensicDrawerProps> = ({
           </button>
         </div>
       </div>
+
+      {/* Official Printable Evidence Dossier Modal */}
+      <EvidencePacketPrint
+        dispute={dispute}
+        analysis={analysis}
+        defenseStatement={defenseStatement}
+        isOpen={isPrintOpen}
+        onClose={() => setIsPrintOpen(false)}
+      />
     </div>
   );
 };
