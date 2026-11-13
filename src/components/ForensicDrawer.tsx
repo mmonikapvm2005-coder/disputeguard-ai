@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { PayPalDispute, AIAnalysisResult } from '../types/dispute';
+import { runForensicAnalysis } from '../lib/aiForensicEngine';
 import { EvidencePacketPrint } from './EvidencePacketPrint';
 import { DualFeedbackPortal } from './DualFeedbackPortal';
 import {
@@ -61,9 +62,24 @@ export const ForensicDrawer: React.FC<ForensicDrawerProps> = ({
       return;
     }
 
-    setLoading(true);
     setSubmissionReceipt(null);
     setActiveTab('dossier');
+
+    // Instant local calculation so UI never hangs or errors
+    try {
+      const instant = runForensicAnalysis(dispute);
+      setAnalysis(instant);
+      setDefenseStatement(instant.generatedDefenseStatement);
+      setChatMessages([
+        {
+          sender: 'agent',
+          text: `Hello! I have audited Dispute ${dispute.dispute_id} (${dispute.reason}). Calculated win probability is ${instant.winProbability}%. Ask me anything about PayPal Seller Protection or ask me to modify the defense dossier.`,
+        },
+      ]);
+      setLoading(false);
+    } catch (e) {
+      setLoading(true);
+    }
 
     fetch(`/api/disputes/${dispute.dispute_id}/analyze`, { method: 'POST' })
       .then((res) => res.json())

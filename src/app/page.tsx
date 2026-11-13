@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { PayPalDispute } from '../types/dispute';
+import { INITIAL_DISPUTES } from '../lib/mockDisputes';
 import { Header } from '../components/Header';
 import { KpiOverview } from '../components/KpiOverview';
 import { RiskAnalytics } from '../components/RiskAnalytics';
@@ -12,8 +13,8 @@ import { AutoPilotModal } from '../components/AutoPilotModal';
 import { ShieldCheck, Cpu, Code2, Database, ExternalLink } from 'lucide-react';
 
 export default function Home() {
-  const [disputes, setDisputes] = useState<PayPalDispute[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [disputes, setDisputes] = useState<PayPalDispute[]>(INITIAL_DISPUTES);
+  const [loading, setLoading] = useState(false);
   const [selectedDispute, setSelectedDispute] = useState<PayPalDispute | null>(null);
   const [isSimulateOpen, setIsSimulateOpen] = useState(false);
   const [isAutoPilotOpen, setIsAutoPilotOpen] = useState(false);
