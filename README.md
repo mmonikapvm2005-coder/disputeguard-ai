@@ -3,6 +3,9 @@
 *Built for the **PayPal & AI: Build What's Next Global Hackathon 2026***  
 *Eligible Sponsor Tracks: **PayPal Platform**, **AG Grid***
 
+🌐 **Live Production Demo:** [https://disputeguard-ai.vercel.app](https://disputeguard-ai.vercel.app)  
+📦 **Source Code Repository:** [https://github.com/mmonikapvm2005-coder/disputeguard-ai](https://github.com/mmonikapvm2005-coder/disputeguard-ai)
+
 ---
 
 ## 💡 Inspiration
